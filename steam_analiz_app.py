@@ -8,30 +8,30 @@ import os
 st.set_page_config(page_title="Steam Veri Analizi", layout="wide")
 st.title("🎮 Steam Market Analiz Uygulaması")
 
-# 2. Veri Yükleme ve Hata Ayıklama (Gelişmiş Okuma Sistemi)
+# 2. Veri Yükleme ve Akıllı Sütun Tespiti
 dosya_adi = 'steam_kucuk.csv'
 
 if os.path.exists(dosya_adi):
-    df = pd.read_csv("steam_kucuk.csv", on_bad_lines='skip')
-    # Sütun isimlerini otomatik eşleştirme (Defensive Programming)
-try:
-    genre_col = [c for c in df.columns if 'genre' in c.lower()][0]
-    pos = [c for c in df.columns if 'pos' in c.lower()][0]
-    neg = [c for c in df.columns if 'neg' in c.lower()][0]
-except IndexError:
-    import streamlit as st
-    st.error("Kritik Hata: Veri setinde 'genre', 'pos' veya 'neg' içeren sütunlar bulunamadı!")
-    st.sidebar.success(f"✅ '{dosya_adi}' başarıyla yüklendi.")
+    try:
+        # Veriyi yükle
+        df = pd.read_csv(dosya_adi, on_bad_lines='skip')
+        
+        # SÜTUN TESPİT SİSTEMİ (Hata almamak için en kritik bölge)
+        # Sütun isimlerini küçük harfe çevirip içinde anahtar kelime arıyoruz
+        genre_col = [c for c in df.columns if 'genre' in c.lower()][0]
+        pos_col = [c for c in df.columns if 'pos' in c.lower()][0]
+        neg_col = [c for c in df.columns if 'neg' in c.lower()][0]
+        
+        st.sidebar.success(f"✅ Veri seti başarıyla bağlandı.")
+        
+    except (IndexError, Exception) as e:
+        st.error(f"Kritik Hata: Veri setinde gerekli sütunlar bulunamadı veya dosya bozuk. Detay: {e}")
+        st.stop()
 else:
-    st.sidebar.error(f"❌ Hata: '{dosya_adi}' dosyası bulunamadı!")
-    st.warning("Lütfen GitHub deponuzda dosya adının tam olarak 'steam_kucuk.csv' olduğundan emin olun.")
-    
-    # Sistemin o an gördüğü dosyaları ekrana yazdıran profesyonel debug bloğu
-    st.info("Sistemin şu an okuyabildiği dosyalar şunlardır (Lütfen listenizi kontrol edin):")
-    mevcut_dosyalar = os.listdir()
-    st.write(mevcut_dosyalar)
-    
-    st.stop() # Dosya yoksa uygulamayı durdurur ve hatalı analiz kodlarının çalışmasını önler.
+    st.sidebar.error(f"❌ Hata: '{dosya_adi}' bulunamadı!")
+    st.info("Sistemin gördüğü dosyalar:")
+    st.write(os.listdir())
+    st.stop()
 
 # 3. Sol Menü (Sidebar) Seçenekleri
 st.sidebar.header("Analiz Kontrol Paneli")
@@ -41,14 +41,13 @@ secim = st.sidebar.selectbox("Görmek istediğiniz analizi seçin:",
 # 4. Analiz Mantığı
 if secim == "Ana Sayfa":
     st.subheader("📊 Veri Seti Genel Görünümü")
-    st.write(f"Sistemde şu anda toplam **{len(df)}** adet seçilmiş oyun verisi analiz ediliyor.")
-    st.dataframe(df.head(15)) # İlk 15 satırı gösterir
-    st.info("Bu veri seti, 400 MB'lık ana veri setinden istatistiksel örnekleme yöntemiyle türetilmiştir.")
+    st.write(f"Sistemde şu anda toplam **{len(df)}** adet oyun verisi analiz ediliyor.")
+    st.dataframe(df.head(15))
+    st.info("Bu çalışma, Yeni Medya bağlamında dijital oyun pazarı verilerinin görselleştirilmesini amaçlar.")
 
 elif secim == "Oyun Sayısı (Nicelik)":
     st.subheader("📈 En Çok Üretilen 10 Oyun Türü")
-    # Veri setindeki tür bilgisini ayıklıyoruz
-    genre_col = 'Genres' if 'Genres' in df.columns else 'genres'
+    # Burada sabit isim yerine genre_col değişkenini kullanıyoruz (Hata buradaydı)
     veriler = df[genre_col].str.split(';').str[0].value_counts().head(10)
     
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -59,13 +58,9 @@ elif secim == "Oyun Sayısı (Nicelik)":
 
 elif secim == "Puan Durumu (Nitelik)":
     st.subheader("⭐ Türlere Göre Kullanıcı Memnuniyeti Skoru")
-    # Puanlama sütunlarını kontrol ediyoruz
-    pos = 'Positive' if 'Positive' in df.columns else 'positive_ratings'
-    neg = 'Negative' if 'Negative' in df.columns else 'negative_ratings'
-    genre_col = 'Genres' if 'Genres' in df.columns else 'genres'
     
-    # Basit bir memnuniyet skoru hesaplıyoruz
-    df['skor'] = df[pos] / (df[pos] + df[neg])
+    # Skor hesaplama (Değişkenleri dinamik kullanıyoruz, KeyError riskini bitirdik)
+    df['skor'] = df[pos_col] / (df[pos_col] + df[neg_col])
     df['ana_tur'] = df[genre_col].str.split(';').str[0]
     
     en_populer = df['ana_tur'].value_counts().head(10).index
