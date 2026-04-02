@@ -2,22 +2,28 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import os
 
 # 1. Sayfa Ayarları
 st.set_page_config(page_title="Steam Veri Analizi", layout="wide")
 st.title("🎮 Steam Market Analiz Uygulaması")
 
-# 2. Veri Yükleme (Otomatik Okuma Sistemi)
-# Bu bölüm, uygulamanın dosya beklemeden doğrudan çalışmasını sağlar.
+# 2. Veri Yükleme ve Hata Ayıklama (Gelişmiş Okuma Sistemi)
 dosya_adi = 'steam_kucuk.csv'
 
-try:
+if os.path.exists(dosya_adi):
     df = pd.read_csv(dosya_adi)
-    st.sidebar.success(f"✅ {dosya_adi} başarıyla yüklendi.")
-except FileNotFoundError:
+    st.sidebar.success(f"✅ '{dosya_adi}' başarıyla yüklendi.")
+else:
     st.sidebar.error(f"❌ Hata: '{dosya_adi}' dosyası bulunamadı!")
-    st.warning("Lütfen GitHub deponuzda 'steam_kucuk.csv' dosyasının olduğundan emin olun.")
-    st.stop() # Dosya yoksa uygulamayı burada durdurur.
+    st.warning("Lütfen GitHub deponuzda dosya adının tam olarak 'steam_kucuk.csv' olduğundan emin olun.")
+    
+    # Sistemin o an gördüğü dosyaları ekrana yazdıran profesyonel debug bloğu
+    st.info("Sistemin şu an okuyabildiği dosyalar şunlardır (Lütfen listenizi kontrol edin):")
+    mevcut_dosyalar = os.listdir()
+    st.write(mevcut_dosyalar)
+    
+    st.stop() # Dosya yoksa uygulamayı durdurur ve hatalı analiz kodlarının çalışmasını önler.
 
 # 3. Sol Menü (Sidebar) Seçenekleri
 st.sidebar.header("Analiz Kontrol Paneli")
