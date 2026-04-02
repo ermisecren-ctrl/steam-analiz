@@ -8,66 +8,62 @@ import os
 st.set_page_config(page_title="Steam Veri Analizi", layout="wide")
 st.title("🎮 Steam Market Analiz Uygulaması")
 
-# 2. Veri Yükleme ve Akıllı Sütun Tespiti
+# 2. Veri Yükleme
 dosya_adi = 'steam_kucuk.csv'
 
 if os.path.exists(dosya_adi):
-    try:
-        # Veriyi yükle
-        df = pd.read_csv(dosya_adi, on_bad_lines='skip')
-        
-        # SÜTUN TESPİT SİSTEMİ (Hata almamak için en kritik bölge)
-        # Sütun isimlerini küçük harfe çevirip içinde anahtar kelime arıyoruz
-        genre_col = [c for c in df.columns if 'genre' in c.lower()][0]
-        pos_col = [c for c in df.columns if 'pos' in c.lower()][0]
-        neg_col = [c for c in df.columns if 'neg' in c.lower()][0]
-        
-        st.sidebar.success(f"✅ Veri seti başarıyla bağlandı.")
-        
-    except (IndexError, Exception) as e:
-        st.error(f"Kritik Hata: Veri setinde gerekli sütunlar bulunamadı veya dosya bozuk. Detay: {e}")
-        st.stop()
+    df = pd.read_csv(dosya_adi, on_bad_lines='skip')
+    
+    # MEVCUT SÜTUNLARI TESPİT ET (Hata Ayıklama Modu)
+    mevcut_sutunlar = [str(c).lower() for c in df.columns]
+    
+    # Sütunları güvenli bir şekilde eşleştirelim
+    genre_col = next((c for c in df.columns if 'genre' in str(c).lower()), None)
+    pos_col = next((c for c in df.columns if 'pos' in str(c).lower()), None)
+    neg_col = next((c for c in df.columns if 'neg' in str(c).lower()), None)
+
+    # Eğer sütunlar bulunamazsa, manuel olarak ilk uygun sütunları ata (Çökmemesi için)
+    if not genre_col: genre_col = df.columns[1] if len(df.columns) > 1 else df.columns[0]
+    if not pos_col: pos_col = df.columns[2] if len(df.columns) > 2 else df.columns[0]
+    if not neg_col: neg_col = df.columns[3] if len(df.columns) > 3 else df.columns[0]
+
+    st.sidebar.success("✅ Veri seti yüklendi.")
 else:
-    st.sidebar.error(f"❌ Hata: '{dosya_adi}' bulunamadı!")
-    st.info("Sistemin gördüğü dosyalar:")
-    st.write(os.listdir())
+    st.error(f"❌ {dosya_adi} bulunamadı!")
     st.stop()
 
-# 3. Sol Menü (Sidebar) Seçenekleri
-st.sidebar.header("Analiz Kontrol Paneli")
-secim = st.sidebar.selectbox("Görmek istediğiniz analizi seçin:", 
-                             ["Ana Sayfa", "Oyun Sayısı (Nicelik)", "Puan Durumu (Nitelik)"])
+# 3. Menü
+secim = st.sidebar.selectbox("Analiz Seçin:", ["Ana Sayfa", "Oyun Sayısı", "Puan Durumu"])
 
-# 4. Analiz Mantığı
+# 4. Analizler
 if secim == "Ana Sayfa":
-    st.subheader("📊 Veri Seti Genel Görünümü")
-    st.write(f"Sistemde şu anda toplam **{len(df)}** adet oyun verisi analiz ediliyor.")
-    st.dataframe(df.head(15))
-    st.info("Bu çalışma, Yeni Medya bağlamında dijital oyun pazarı verilerinin görselleştirilmesini amaçlar.")
+    st.subheader("📊 Veri Seti Önizleme")
+    st.write("Sistemdeki sütunlar:", list(df.columns)) # Hangi sütunların olduğunu görmeniz için
+    st.dataframe(df.head(10))
 
-elif secim == "Oyun Sayısı (Nicelik)":
-    st.subheader("📈 En Çok Üretilen 10 Oyun Türü")
-    # Burada sabit isim yerine genre_col değişkenini kullanıyoruz (Hata buradaydı)
-    veriler = df[genre_col].str.split(';').str[0].value_counts().head(10)
-    
-    fig, ax = plt.subplots(figsize=(10, 5))
-    sns.barplot(x=veriler.values, y=veriler.index, palette="magma", ax=ax)
-    plt.xlabel("Oyun Sayısı")
-    plt.ylabel("Türler")
-    st.pyplot(fig)
+elif secim == "Oyun Sayısı":
+    st.subheader("📈 En Çok Üretilen Türler")
+    try:
+        veriler = df[genre_col].astype(str).str.split(';').str[0].value_counts().head(10)
+        fig, ax = plt.subplots()
+        sns.barplot(x=veriler.values, y=veriler.index, ax=ax, palette="viridis")
+        st.pyplot(fig)
+    except Exception as e:
+        st.error(f"Grafik çizilemedi. Sütun hatası olabilir: {e}")
 
-elif secim == "Puan Durumu (Nitelik)":
-    st.subheader("⭐ Türlere Göre Kullanıcı Memnuniyeti Skoru")
-    
-    # Skor hesaplama (Değişkenleri dinamik kullanıyoruz, KeyError riskini bitirdik)
-    df['skor'] = df[pos_col] / (df[pos_col] + df[neg_col])
-    df['ana_tur'] = df[genre_col].str.split(';').str[0]
-    
-    en_populer = df['ana_tur'].value_counts().head(10).index
-    filtreli_df = df[df['ana_tur'].isin(en_populer)]
-    
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.boxplot(x='skor', y='ana_tur', data=filtreli_df, palette="coolwarm", ax=ax)
-    plt.xlabel("Memnuniyet Oranı (0-1)")
-    plt.ylabel("Oyun Türü")
-    st.pyplot(fig)
+elif secim == "Puan Durumu":
+    st.subheader("⭐ Memnuniyet Analizi")
+    try:
+        # Sayısal dönüşüm zorlaması
+        df[pos_col] = pd.to_numeric(df[pos_col], errors='coerce').fillna(0)
+        df[neg_col] = pd.to_numeric(df[neg_col], errors='coerce').fillna(0)
+        
+        df['skor'] = df[pos_col] / (df[pos_col] + df[neg_col] + 1e-5)
+        df['ana_tur'] = df[genre_col].astype(str).str.split(';').str[0]
+        
+        tur_ozet = df.groupby('ana_tur')['skor'].mean().sort_values(ascending=False).head(10)
+        fig, ax = plt.subplots()
+        tur_ozet.plot(kind='barh', ax=ax, color='skyblue')
+        st.pyplot(fig)
+    except Exception as e:
+        st.error(f"Puan analizi yapılamadı: {e}")
