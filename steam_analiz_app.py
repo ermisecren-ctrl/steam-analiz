@@ -12,7 +12,7 @@ st.title("🎮 Steam Market Analiz Uygulaması")
 dosya_adi = 'steam_kucuk.csv'
 
 if os.path.exists(dosya_adi):
-    df = pd.read_csv(dosya_adi)
+df = pd.read_csv("steam_kucuk.csv", on_bad_lines='skip')
     st.sidebar.success(f"✅ '{dosya_adi}' başarıyla yüklendi.")
 else:
     st.sidebar.error(f"❌ Hata: '{dosya_adi}' dosyası bulunamadı!")
