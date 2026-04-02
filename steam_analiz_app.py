@@ -13,6 +13,14 @@ dosya_adi = 'steam_kucuk.csv'
 
 if os.path.exists(dosya_adi):
     df = pd.read_csv("steam_kucuk.csv", on_bad_lines='skip')
+    # Sütun isimlerini otomatik eşleştirme (Defensive Programming)
+try:
+    genre_col = [c for c in df.columns if 'genre' in c.lower()][0]
+    pos = [c for c in df.columns if 'pos' in c.lower()][0]
+    neg = [c for c in df.columns if 'neg' in c.lower()][0]
+except IndexError:
+    import streamlit as st
+    st.error("Kritik Hata: Veri setinde 'genre', 'pos' veya 'neg' içeren sütunlar bulunamadı!")
     st.sidebar.success(f"✅ '{dosya_adi}' başarıyla yüklendi.")
 else:
     st.sidebar.error(f"❌ Hata: '{dosya_adi}' dosyası bulunamadı!")
